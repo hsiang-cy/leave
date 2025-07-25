@@ -210,7 +210,7 @@ export const googleAuthMiddleware =
 /**
  * 簡化的認證中間件 - 僅檢查用戶身份，不創建 Google 認證
  */
-export const simpleAuthMiddleware = // Pick 是啥？
+export const simpleAuthMiddleware =
     createMiddleware<{ Variables: Pick<AuthVariables, 'userEmail' | 'userName'> }>(async (c, next) => {
         try {
             const authHeader = c.req.header('Authorization')
@@ -235,8 +235,7 @@ export const simpleAuthMiddleware = // Pick 是啥？
             c.set('userEmail', userInfo.email)
             c.set('userName', userInfo.name)
 
-            console.log(`token: ${token}`);
-
+            console.log(`簡單認證通過 - 用戶: ${userInfo.email}`)
 
             await next()
         } catch (error) {

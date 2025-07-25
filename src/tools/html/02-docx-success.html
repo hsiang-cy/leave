@@ -11,10 +11,12 @@
         body {
             background-color: #f8f9fa;
         }
+
         .navbar {
             background-color: #fff;
             box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
+
         .success-container {
             max-width: 600px;
             margin: 4rem auto;
@@ -24,20 +26,24 @@
             border-radius: 0.5rem;
             box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
         }
+
         .success-icon {
             font-size: 4rem;
             color: #198754;
             margin-bottom: 1.5rem;
         }
+
         .success-message {
             font-size: 1.25rem;
             color: #495057;
             margin-bottom: 2.5rem;
         }
+
         .action-buttons .btn {
             margin: 0 0.5rem 1rem;
             padding: 0.75rem 1.5rem;
         }
+
         .loading-spinner {
             display: inline-block;
             width: 1rem;
@@ -49,10 +55,17 @@
             margin-right: 0.5rem;
             vertical-align: text-bottom;
         }
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .email-form {
             background-color: #f8f9fa;
             padding: 1.5rem;
@@ -152,160 +165,206 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- 自訂 JavaScript -->
-    <script>
-        $(document).ready(function () {
-            const urlParams = new URLSearchParams(window.location.search);
-            const docxId = urlParams.get('id');
-            let jwtToken = localStorage.getItem('jwtToken');
+<script>
+    $(document).ready(function () {
+        const urlParams = new URLSearchParams(window.location.search);
+        const docxId = urlParams.get('id');
+        let jwtToken = localStorage.getItem('jwtToken'); // 確保在全局作用域
 
-            const resultModalEl = document.getElementById('resultModal');
-            const resultModal = new bootstrap.Modal(resultModalEl);
+        const resultModalEl = document.getElementById('resultModal');
+        const resultModal = new bootstrap.Modal(resultModalEl);
 
-            // 檢查必要參數
-            if (!docxId || !jwtToken) {
-                $('.success-container').html("<h3 class='text-danger'>錯誤</h3><p>缺少必要的參數或登入狀態，請返回表單頁面重新提交。</p><a href='./01-leave-form.html' class='btn btn-primary'>返回</a>");
+        // 檢查必要參數
+        if (!docxId || !jwtToken) {
+            $('.success-container').html("<h3 class='text-danger'>錯誤</h3><p>缺少必要的參數或登入狀態，請返回表單頁面重新提交。</p><a href='./01-leave-form.html' class='btn btn-primary'>返回</a>");
+            return;
+        }
+
+        // 載入用戶資訊
+        loadUserInfo();
+
+        // 登出按鈕
+        $('#logoutBtn').on('click', function() {
+            localStorage.removeItem('jwtToken');
+            window.location.href = './00-login.html';
+        });
+
+        // 顯示文檔 ID
+        $('#docxInfo').text(`資料庫記錄 ID: ${docxId}`);
+
+        // 發送郵件按鈕點擊事件
+        $('#emailBtn').on('click', function () {
+            const recipientEmail = $('#recipientEmail').val().trim();
+            const subject = $('#emailSubject').val().trim();
+            const message = $('#emailMessage').val().trim();
+            
+            if (!recipientEmail) {
+                showResult('輸入錯誤', '請輸入收件人 Email 地址');
+                return;
+            }
+            
+            if (!subject) {
+                showResult('輸入錯誤', '請輸入郵件主題');
                 return;
             }
 
-            // 載入用戶資訊
-            loadUserInfo();
+            $(this).prop('disabled', true);
+            $('#emailBtnText').text('發送中...');
+            $('#emailBtnSpinner').show();
 
-            // 登出按鈕
-            $('#logoutBtn').on('click', function() {
-                localStorage.removeItem('jwtToken');
-                window.location.href = './00-login.html';
-            });
+            const emailData = {
+                docxId: docxId,
+                recipient: recipientEmail,
+                cc: $('#ccEmail').val().trim() || null,
+                subject: subject,
+                message: message
+            };
 
-            // 顯示文檔 ID
-            $('#docxInfo').text(`資料庫記錄 ID: ${docxId}`);
-
-            // 發送郵件按鈕點擊事件
-            $('#emailBtn').on('click', function () {
-                const recipientEmail = $('#recipientEmail').val().trim();
-                const subject = $('#emailSubject').val().trim();
-                const message = $('#emailMessage').val().trim();
-                
-                if (!recipientEmail) {
-                    showResult('輸入錯誤', '請輸入收件人 Email 地址');
-                    return;
-                }
-                
-                if (!subject) {
-                    showResult('輸入錯誤', '請輸入郵件主題');
-                    return;
-                }
-
-                $(this).prop('disabled', true);
-                $('#emailBtnText').text('發送中...');
-                $('#emailBtnSpinner').show();
-
-                const emailData = {
-                    docxId: docxId,
-                    recipient: recipientEmail,
-                    cc: $('#ccEmail').val().trim() || null,
-                    subject: subject,
-                    message: message
-                };
-
-                $.ajax({
-                    url: 'http://localhost:3000/email/send-with-attachment',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(emailData),
-                    headers: {
-                        'Authorization': 'Bearer ' + jwtToken
-                    },
-                    success: function (response) {
-                        if (response.success) {
-                            showResult('發送成功', '✅ ' + response.message);
-                        } else {
-                            showResult('發送失敗', '❌ ' + response.message);
-                        }
-                    },
-                    error: function (xhr) {
-                        if (xhr.status === 401) {
-                            handleAuthError();
-                            return;
-                        }
-                        const errorResponse = xhr.responseJSON || { message: '無法連接伺服器。' };
-                        showResult('請求錯誤', '❌ ' + errorResponse.message);
-                    },
-                    complete: function () {
-                        $('#emailBtn').prop('disabled', false);
-                        $('#emailBtnText').text('📧 發送郵件 (含附件)');
-                        $('#emailBtnSpinner').hide();
+            $.ajax({
+                url: 'http://localhost:3000/email/send-with-attachment',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(emailData),
+                headers: {
+                    'Authorization': 'Bearer ' + jwtToken
+                },
+                success: function (response) {
+                    if (response.success) {
+                        showResult('發送成功', '✅ ' + response.message);
+                    } else {
+                        showResult('發送失敗', '❌ ' + response.message);
                     }
-                });
+                },
+                error: function (xhr) {
+                    if (xhr.status === 401) {
+                        handleAuthError();
+                        return;
+                    }
+                    const errorResponse = xhr.responseJSON || { message: '無法連接伺服器。' };
+                    showResult('請求錯誤', '❌ ' + errorResponse.message);
+                },
+                complete: function () {
+                    $('#emailBtn').prop('disabled', false);
+                    $('#emailBtnText').text('📧 發送郵件 (含附件)');
+                    $('#emailBtnSpinner').hide();
+                }
             });
+        });
 
-            // 下載按鈕點擊事件
-            $('#downloadBtn').on('click', function() {
-                const downloadUrl = `http://localhost:3000/api/docx-download/${docxId}`;
+        // 下載按鈕點擊事件 - 修復版本
+        $('#downloadBtn').on('click', function() {
+            const $btn = $(this);
+            const originalText = $btn.text();
+            
+            $btn.prop('disabled', true).text('下載中...');
+            
+            const downloadUrl = `http://localhost:3000/api/docx-download/${docxId}`;
+            
+            console.log('開始下載，URL:', downloadUrl);
+            console.log('使用 Token:', jwtToken ? 'Token 存在' : 'Token 不存在');
+            
+            fetch(downloadUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + jwtToken,
+                    'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                }
+            })
+            .then(response => {
+                console.log('下載響應狀態:', response.status);
+                console.log('響應標頭:', Object.fromEntries(response.headers.entries()));
                 
-                // 建立一個隱藏的下載鏈接
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.message || `HTTP ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    });
+                }
+                
+                return response.blob();
+            })
+            .then(blob => {
+                console.log('下載 Blob 大小:', blob.size, 'bytes');
+                console.log('Blob 類型:', blob.type);
+                
+                if (blob.size === 0) {
+                    throw new Error('下載的檔案為空');
+                }
+                
+                // 創建下載鏈接
+                const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = downloadUrl;
+                link.href = url;
                 link.download = `leave_application_${docxId}.docx`;
                 link.style.display = 'none';
                 
-                // 設置認證標頭（對於下載，我們需要另一種方式）
-                fetch(downloadUrl, {
-                    headers: {
-                        'Authorization': 'Bearer ' + jwtToken
-                    }
-                })
-                .then(response => {
-                    if (response.ok) {
-                        return response.blob();
-                    }
-                    throw new Error('下載失敗');
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    link.href = url;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                })
-                .catch(error => {
-                    showResult('下載失敗', '無法下載檔案，請稍後再試');
-                });
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 清理 URL 對象
+                setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+                
+                showResult('下載成功', '✅ 文件已成功下載！');
+            })
+            .catch(error => {
+                console.error('下載失敗詳細錯誤:', error);
+                showResult('下載失敗', `❌ ${error.message}`);
+            })
+            .finally(() => {
+                $btn.prop('disabled', false).text(originalText);
             });
+        });
 
-            function loadUserInfo() {
-                $.ajax({
-                    url: 'http://localhost:3000/auth/user/profile',
-                    type: 'GET',
-                    headers: {
-                        'Authorization': 'Bearer ' + jwtToken
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#userWelcome').text(`歡迎，${response.user.name}`);
-                            // 自動填入當前用戶的 email 作為預設收件人
-                            $('#recipientEmail').val(response.user.email);
-                        }
-                    },
-                    error: function() {
+        // 修復 loadUserInfo 函數
+        function loadUserInfo() {
+            console.log('載入用戶資訊，Token:', jwtToken ? 'Token 存在' : 'Token 不存在');
+            
+            if (!jwtToken) {
+                console.error('loadUserInfo: jwtToken 未定義');
+                handleAuthError();
+                return;
+            }
+
+            $.ajax({
+                url: 'http://localhost:3000/auth/user/profile',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + jwtToken
+                },
+                success: function(response) {
+                    console.log('用戶資訊載入成功:', response);
+                    if (response.success) {
+                        $('#userWelcome').text(`歡迎，${response.user.name}`);
+                        // 自動填入當前用戶的 email 作為預設收件人
+                        $('#recipientEmail').val(response.user.email);
+                    } else {
+                        console.error('用戶資訊載入失敗:', response);
                         handleAuthError();
                     }
-                });
-            }
+                },
+                error: function(xhr, status, error) {
+                    console.error('載入用戶資訊 AJAX 錯誤:', { xhr, status, error });
+                    handleAuthError();
+                }
+            });
+        }
 
-            function handleAuthError() {
-                localStorage.removeItem('jwtToken');
-                alert('登入狀態已過期，請重新登入');
-                window.location.href = './00-login.html';
-            }
+        function handleAuthError() {
+            console.log('處理認證錯誤');
+            localStorage.removeItem('jwtToken');
+            alert('登入狀態已過期，請重新登入');
+            window.location.href = './00-login.html';
+        }
 
-            function showResult(title, message) {
-                $('#resultModalLabel').text(title);
-                $('#resultModalBody').html(message);
-                resultModal.show();
-            }
-        });
-    </script>
+        function showResult(title, message) {
+            $('#resultModalLabel').text(title);
+            $('#resultModalBody').html(message);
+            resultModal.show();
+        }
+    });
+</script>
 </body>
 
 </html>

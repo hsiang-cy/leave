@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { modifyLeaveApplication, validateParams, type LeaveApplicationParams } from '../tools/word/word.js'
 import { db } from '../tools/database/db.js';
-import { googleAuthMiddleware, type AuthVariables } from '../middleware/authCheck.js';
+import { googleAuthMiddleware, simpleAuthMiddleware, type AuthVariables } from '../middleware/authCheck.js';
 
 // 修正類型定義
 const modifydocx = new Hono<{
@@ -76,11 +76,12 @@ modifydocx.post('/modifydocx', async (c) => {
     }
 });
 
-// 新增下載路由
-modifydocx.get('/docx-download/:id', async (c) => {
+modifydocx.get('/docx-download/:id', simpleAuthMiddleware, async (c) => {
     try {
         const userEmail = c.get('userEmail');
         const fileId = c.req.param('id');
+
+        console.log(`下載請求 - 用戶: ${userEmail}, 文件ID: ${fileId}`);
 
         const result = await db.execute({
             sql: 'SELECT file, file_name FROM email_docx WHERE id = ? AND user_email = ?',
@@ -88,20 +89,41 @@ modifydocx.get('/docx-download/:id', async (c) => {
         });
 
         if (result.rows.length === 0) {
+            console.log('找不到指定的檔案');
             return c.json({
                 success: false,
                 message: '找不到指定的檔案'
             }, 404);
         }
 
-        const fileData = result.rows[0].file as unknown as ArrayBuffer;
-        const fileBuffer = Buffer.from(fileData);
+        // 修改 BLOB 數據處理方式
+        const fileData = result.rows[0].file;
+        let fileBuffer: Buffer;
+
+        // 處理不同類型的數據
+        if (Buffer.isBuffer(fileData)) {
+            fileBuffer = fileData;
+        } else if (fileData instanceof ArrayBuffer) {
+            fileBuffer = Buffer.from(fileData);
+        } else if (typeof fileData === 'string') {
+            // 如果是 base64 字符串
+            fileBuffer = Buffer.from(fileData, 'base64');
+        } else {
+            throw new Error('不支持的文件類型');
+
+        }
+
         const fileName = result.rows[0].file_name as string;
+
+        console.log(`準備下載文件: ${fileName}, 大小: ${fileBuffer.length} bytes`);
 
         return new Response(fileBuffer, {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'Content-Disposition': `attachment; filename="${fileName}"`
+                'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+                'Content-Length': fileBuffer.length.toString(),
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             }
         });
 
@@ -109,7 +131,8 @@ modifydocx.get('/docx-download/:id', async (c) => {
         console.error('下載檔案錯誤:', error);
         return c.json({
             success: false,
-            message: '下載失敗'
+            message: '下載失敗',
+            error: error instanceof Error ? error.message : '未知錯誤'
         }, 500);
     }
 });
