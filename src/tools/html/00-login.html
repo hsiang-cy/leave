@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統登入</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+        }
+        .login-container {
+            max-width: 450px;
+            margin: 0 auto;
+            padding: 3rem;
+            background-color: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            font-size: 2rem;
+            color: white;
+        }
+        .google-btn {
+            background-color: #4285f4;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .google-btn:hover {
+            background-color: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(66, 133, 244, 0.3);
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 0.125rem solid #dee2e6;
+            border-top: 0.125rem solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            display: none;
+        }
+        .status-success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="logo">
+                🏢
+            </div>
+            <h2 class="text-center mb-4">請假申請系統</h2>
+            <p class="text-center text-muted mb-4">
+                請使用您的 Google 帳號登入系統
+            </p>
+
+            <!-- 登入按鈕 -->
+            <div class="d-grid">
+                <button type="button" id="loginBtn" class="btn btn-primary google-btn">
+                    <span id="loginBtnText">
+                        <i class="me-2">🔐</i>
+                        使用 Google 登入
+                    </span>
+                    <span id="loginSpinner" style="display: none;">
+                        <span class="loading-spinner"></span>
+                        登入中...
+                    </span>
+                </button>
+            </div>
+
+            <!-- 狀態訊息 -->
+            <div id="statusMessage" class="status-message">
+                <div id="statusContent"></div>
+            </div>
+
+            <!-- 功能說明 -->
+            <div class="mt-4 text-center">
+                <small class="text-muted">
+                    <strong>系統功能：</strong><br>
+                    📝 線上請假申請<br>
+                    📄 自動產生 DOCX 文件<br>
+                    📧 郵件通知功能
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 自訂 JavaScript -->
+    <script>
+        $(document).ready(function () {
+            // 檢查是否已有有效的 token
+            const savedToken = localStorage.getItem('jwtToken');
+            if (savedToken) {
+                checkTokenValidity(savedToken);
+            }
+
+            // 登入按鈕點擊事件
+            $('#loginBtn').on('click', function () {
+                startLogin();
+            });
+
+            function startLogin() {
+                showStatus('info', '正在跳轉到 Google 登入頁面...');
+                setLoginButtonState(true);
+                
+                // 跳轉到後端的 Google 登入端點
+                window.location.href = 'http://localhost:3000/auth/google/login';
+            }
+
+            function checkTokenValidity(token) {
+                showStatus('info', '檢查登入狀態...');
+                
+                $.ajax({
+                    url: 'http://localhost:3000/auth/token/check',
+                    type: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            showStatus('success', `歡迎回來，${response.user.name}！正在跳轉到申請表單...`);
+                            setTimeout(() => {
+                                window.location.href = './01-leave-form.html';
+                            }, 1500);
+                        } else {
+                            localStorage.removeItem('jwtToken');
+                            showStatus('error', 'Token 已失效，請重新登入');
+                        }
+                    },
+                    error: function () {
+                        localStorage.removeItem('jwtToken');
+                        showStatus('error', 'Token 驗證失敗，請重新登入');
+                    }
+                });
+            }
+
+            function setLoginButtonState(loading) {
+                if (loading) {
+                    $('#loginBtnText').hide();
+                    $('#loginSpinner').show();
+                    $('#loginBtn').prop('disabled', true);
+                } else {
+                    $('#loginBtnText').show();
+                    $('#loginSpinner').hide();
+                    $('#loginBtn').prop('disabled', false);
+                }
+            }
+
+            function showStatus(type, message) {
+                const statusDiv = $('#statusMessage');
+                const contentDiv = $('#statusContent');
+                
+                statusDiv.removeClass('status-success status-error status-info');
+                
+                if (type === 'success') {
+                    statusDiv.addClass('status-success');
+                } else if (type === 'error') {
+                    statusDiv.addClass('status-error');
+                } else {
+                    statusDiv.addClass('status-info');
+                }
+                
+                contentDiv.html(message);
+                statusDiv.show();
+            }
+
+            // 處理從 callback 返回的情況
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+            const error = urlParams.get('error');
+            
+            if (token) {
+                // 儲存 token 到 localStorage
+                localStorage.setItem('jwtToken', token);
+                showStatus('success', '登入成功！正在跳轉到申請表單...');
+                
+                // 清理 URL 參數
+                window.history.replaceState({}, document.title, window.location.pathname);
+                
+                setTimeout(() => {
+                    window.location.href = './01-leave-form.html';
+                }, 1500);
+            } else if (error) {
+                showStatus('error', `登入失敗：${decodeURIComponent(error)}`);
+            }
+        });
+    </script>
+</body>
+
+</html>

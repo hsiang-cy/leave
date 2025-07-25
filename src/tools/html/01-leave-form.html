@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>請假申請表單</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .navbar {
+            background-color: #fff;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .form-container {
+            max-width: 700px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background-color: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 0.125rem solid #dee2e6;
+            border-top: 0.125rem solid #0d6efd;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .user-info {
+            background-color: #e9ecef;
+            padding: 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 頂部導航 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <span class="navbar-brand">請假申請系統</span>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-text me-3" id="userWelcome">載入中...</span>
+                <button class="btn btn-outline-danger btn-sm" id="logoutBtn">登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="form-container">
+            <h2 class="text-center mb-4">請假申請表單</h2>
+
+            <!-- 用戶資訊顯示 -->
+            <div class="user-info" id="userInfo" style="display: none;">
+                <strong>當前用戶：</strong><span id="userName"></span> (<span id="userEmail"></span>)
+            </div>
+
+            <!-- 表單 -->
+            <form id="leaveForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="applicant" class="form-label">申請人 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="applicant" placeholder="請輸入申請人姓名" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="applicationDate" class="form-label">申請日期</label>
+                        <input type="date" class="form-control" id="applicationDate">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="leaveType" class="form-label">請假類型 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="leaveType" value="特休" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="proxy" class="form-label">代理人</label>
+                        <input type="text" class="form-control" id="proxy" placeholder="請輸入代理人姓名（可選）">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="emailSubject" class="form-label">Email 標題 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="emailSubject" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="reason" class="form-label">請假事由 <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="reason" rows="3" placeholder="請輸入請假事由" required></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="startDate" class="form-label">開始日期 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="startDate" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="startTime" class="form-label">開始時間 <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" id="startTime" value="09:00" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="endDate" class="form-label">結束日期 <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="endDate" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="endTime" class="form-label">結束時間 <span class="text-danger">*</span></label>
+                        <input type="time" class="form-control" id="endTime" value="17:00" required>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="totalHours" class="form-label">請假時數 <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="totalHours" value="8" min="0.5" step="0.5"
+                        placeholder="請輸入請假時數" required>
+                </div>
+
+                <!-- 提交按鈕 -->
+                <div class="d-grid">
+                    <button type="button" id="submitBtn" class="btn btn-primary">
+                        <span id="submitBtnText">提交申請</span>
+                        <span id="loadingSpinner" style="display: none;">
+                            <span class="loading-spinner"></span>
+                            提交中...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="errorModalLabel">錯誤</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="errorModalBody">
+                    <!-- Error content goes here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 自訂 JavaScript -->
+    <script>
+        $(document).ready(function () {
+            const errorModalEl = document.getElementById('errorModal');
+            const errorModal = new bootstrap.Modal(errorModalEl);
+            let jwtToken = localStorage.getItem('jwtToken');
+
+            // 檢查登入狀態
+            if (!jwtToken) {
+                window.location.href = './00-login.html';
+                return;
+            }
+
+            // 驗證 token 並取得用戶資訊
+            validateTokenAndLoadUser();
+
+            // 登出按鈕
+            $('#logoutBtn').on('click', function () {
+                localStorage.removeItem('jwtToken');
+                window.location.href = './00-login.html';
+            });
+
+            // 設置日期預設值
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const todayStr = today.toISOString().split('T')[0];
+            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            $('#applicationDate').val(todayStr);
+            $('#startDate').val(todayStr);
+            $('#endDate').val(tomorrowStr);
+
+            $('#startDate').on('change', function () {
+                const startDate = $(this).val();
+                const endDate = $('#endDate').val();
+                if (endDate && startDate > endDate) {
+                    $('#endDate').val(startDate);
+                }
+            });
+
+            function checkFormValidity() {
+                let isValid = true;
+                $('#leaveForm [required]').each(function () {
+                    if ($(this).val().trim() === '') {
+                        isValid = false;
+                        return false;
+                    }
+                });
+                $('#submitBtn').prop('disabled', !isValid);
+            }
+
+            checkFormValidity();
+            $('#leaveForm [required]').on('keyup change', checkFormValidity);
+
+            function validateTokenAndLoadUser() {
+                $.ajax({
+                    url: 'http://localhost:3000/auth/user/profile',
+                    type: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            $('#userName').text(response.user.name);
+                            $('#userEmail').text(response.user.email);
+                            $('#applicant').val(response.user.name);
+                            $('#userWelcome').text(`歡迎，${response.user.name}`);
+                            $('#emailSubject').val(response.user.name + '_特休申請');
+                            $('#userInfo').show();
+                        } else {
+                            handleAuthError();
+                        }
+                    },
+                    error: function () {
+                        handleAuthError();
+                    }
+                });
+            }
+
+            function handleAuthError() {
+                localStorage.removeItem('jwtToken');
+                alert('登入狀態已過期，請重新登入');
+                window.location.href = './00-login.html';
+            }
+
+            // 處理表單提交
+            $('#submitBtn').on('click', function () {
+                const reasonVal = $('#reason').val();
+                const formData = {
+                    applicant: $('#applicant').val(),
+                    applicationDate: $('#applicationDate').val(),
+                    proxy: $('#proxy').val(),
+                    reason: '\n' + reasonVal + '\n',
+                    leaveType: $('#leaveType').val(),
+                    emailSubject: $('#emailSubject').val(),
+                    startDate: $('#startDate').val(),
+                    startTime: $('#startTime').val(),
+                    endDate: $('#endDate').val(),
+                    endTime: $('#endTime').val(),
+                    totalHours: parseFloat($('#totalHours').val()),
+                };
+
+                $('#submitBtnText').hide();
+                $('#loadingSpinner').show();
+                $('#submitBtn').prop('disabled', true);
+
+                $.ajax({
+                    url: 'http://localhost:3000/api/modifydocx',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            window.location.href = `./02-docx-success.html?id=${response.id}`;
+                        } else {
+                            showError('申請失敗', response.message, response.errors);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        if (xhr.status === 401) {
+                            handleAuthError();
+                            return;
+                        }
+                        const errorResponse = xhr.responseJSON || { message: '無法連接伺服器，請檢查後端是否已啟動。' };
+                        showError('請求錯誤', errorResponse.message, errorResponse.errors);
+                    },
+                    complete: function () {
+                        $('#submitBtnText').show();
+                        $('#loadingSpinner').hide();
+                        checkFormValidity();
+                    }
+                });
+            });
+
+            function showError(title, message, errors) {
+                let errorMsg = message || '未知錯誤';
+                if (errors && errors.length > 0) {
+                    errorMsg += '<br><br><strong>錯誤詳情：</strong><br>' + errors.join('<br>');
+                }
+                $('#errorModalLabel').text(title);
+                $('#errorModalBody').html(errorMsg);
+                errorModal.show();
+            }
+        });
+    </script>
+</body>
+
+</html>

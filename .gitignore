@@ -1,0 +1,9 @@
+data/
+dist/
+.env
+client_secret_770911191345-674bf1lijg96e6q203n1204k2sru43jn.apps.googleusercontent.com.json
+node_modules/
+bun.lock
+
+*.docx
+!example.docx

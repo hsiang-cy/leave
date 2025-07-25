@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>請假申請成功</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #fff;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .success-container {
+            max-width: 600px;
+            margin: 4rem auto;
+            padding: 3rem;
+            text-align: center;
+            background-color: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+        .success-icon {
+            font-size: 4rem;
+            color: #198754;
+            margin-bottom: 1.5rem;
+        }
+        .success-message {
+            font-size: 1.25rem;
+            color: #495057;
+            margin-bottom: 2.5rem;
+        }
+        .action-buttons .btn {
+            margin: 0 0.5rem 1rem;
+            padding: 0.75rem 1.5rem;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 0.125rem solid #dee2e6;
+            border-top: 0.125rem solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+            vertical-align: text-bottom;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .email-form {
+            background-color: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 頂部導航 -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <span class="navbar-brand">請假申請系統</span>
+            <div class="navbar-nav ms-auto">
+                <span class="nav-text me-3" id="userWelcome">載入中...</span>
+                <button class="btn btn-outline-danger btn-sm" id="logoutBtn">登出</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="success-container">
+            <div class="success-icon">✅</div>
+            <h3 class="mb-3">申請已成功提交！</h3>
+            <p class="success-message">
+                您的請假單 .docx 已產生並儲存至資料庫。
+                <br><small class="text-muted" id="docxInfo">資料庫記錄 ID: 載入中...</small>
+            </p>
+
+            <!-- 郵件發送表單 -->
+            <div class="email-form">
+                <h5 class="mb-3">📧 發送郵件通知</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="recipientEmail" class="form-label">收件人 Email</label>
+                        <input type="email" class="form-control" id="recipientEmail" placeholder="請輸入收件人郵箱">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="ccEmail" class="form-label">副本 (CC)</label>
+                        <input type="email" class="form-control" id="ccEmail" placeholder="可選">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="emailSubject" class="form-label">郵件主題</label>
+                    <input type="text" class="form-control" id="emailSubject" value="請假申請單" placeholder="請輸入郵件主題">
+                </div>
+                <div class="mb-3">
+                    <label for="emailMessage" class="form-label">郵件內容</label>
+                    <textarea class="form-control" id="emailMessage" rows="4" placeholder="請輸入郵件內容（可選）">您好，
+
+請參閱附件中的請假申請單。
+
+謝謝！</textarea>
+                </div>
+            </div>
+
+            <!-- 操作按鈕 -->
+            <div class="action-buttons">
+                <button type="button" id="emailBtn" class="btn btn-primary">
+                    <span id="emailBtnSpinner" class="loading-spinner" style="display: none;"></span>
+                    <span id="emailBtnText">📧 發送郵件 (含附件)</span>
+                </button>
+                <button type="button" id="downloadBtn" class="btn btn-secondary">
+                    📥 下載 .docx
+                </button>
+            </div>
+            <div class="mt-4">
+                <a href="./01-leave-form.html" class="btn btn-link">📝 建立新的申請</a>
+                <a href="./00-login.html" class="btn btn-link">🏠 回到首頁</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resultModalLabel">操作結果</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="resultModalBody">
+                    <!-- Result content goes here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- 自訂 JavaScript -->
+    <script>
+        $(document).ready(function () {
+            const urlParams = new URLSearchParams(window.location.search);
+            const docxId = urlParams.get('id');
+            let jwtToken = localStorage.getItem('jwtToken');
+
+            const resultModalEl = document.getElementById('resultModal');
+            const resultModal = new bootstrap.Modal(resultModalEl);
+
+            // 檢查必要參數
+            if (!docxId || !jwtToken) {
+                $('.success-container').html("<h3 class='text-danger'>錯誤</h3><p>缺少必要的參數或登入狀態，請返回表單頁面重新提交。</p><a href='./01-leave-form.html' class='btn btn-primary'>返回</a>");
+                return;
+            }
+
+            // 載入用戶資訊
+            loadUserInfo();
+
+            // 登出按鈕
+            $('#logoutBtn').on('click', function() {
+                localStorage.removeItem('jwtToken');
+                window.location.href = './00-login.html';
+            });
+
+            // 顯示文檔 ID
+            $('#docxInfo').text(`資料庫記錄 ID: ${docxId}`);
+
+            // 發送郵件按鈕點擊事件
+            $('#emailBtn').on('click', function () {
+                const recipientEmail = $('#recipientEmail').val().trim();
+                const subject = $('#emailSubject').val().trim();
+                const message = $('#emailMessage').val().trim();
+                
+                if (!recipientEmail) {
+                    showResult('輸入錯誤', '請輸入收件人 Email 地址');
+                    return;
+                }
+                
+                if (!subject) {
+                    showResult('輸入錯誤', '請輸入郵件主題');
+                    return;
+                }
+
+                $(this).prop('disabled', true);
+                $('#emailBtnText').text('發送中...');
+                $('#emailBtnSpinner').show();
+
+                const emailData = {
+                    docxId: docxId,
+                    recipient: recipientEmail,
+                    cc: $('#ccEmail').val().trim() || null,
+                    subject: subject,
+                    message: message
+                };
+
+                $.ajax({
+                    url: 'http://localhost:3000/email/send-with-attachment',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(emailData),
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            showResult('發送成功', '✅ ' + response.message);
+                        } else {
+                            showResult('發送失敗', '❌ ' + response.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        if (xhr.status === 401) {
+                            handleAuthError();
+                            return;
+                        }
+                        const errorResponse = xhr.responseJSON || { message: '無法連接伺服器。' };
+                        showResult('請求錯誤', '❌ ' + errorResponse.message);
+                    },
+                    complete: function () {
+                        $('#emailBtn').prop('disabled', false);
+                        $('#emailBtnText').text('📧 發送郵件 (含附件)');
+                        $('#emailBtnSpinner').hide();
+                    }
+                });
+            });
+
+            // 下載按鈕點擊事件
+            $('#downloadBtn').on('click', function() {
+                const downloadUrl = `http://localhost:3000/api/docx-download/${docxId}`;
+                
+                // 建立一個隱藏的下載鏈接
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = `leave_application_${docxId}.docx`;
+                link.style.display = 'none';
+                
+                // 設置認證標頭（對於下載，我們需要另一種方式）
+                fetch(downloadUrl, {
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    }
+                    throw new Error('下載失敗');
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    link.href = url;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    showResult('下載失敗', '無法下載檔案，請稍後再試');
+                });
+            });
+
+            function loadUserInfo() {
+                $.ajax({
+                    url: 'http://localhost:3000/auth/user/profile',
+                    type: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + jwtToken
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            $('#userWelcome').text(`歡迎，${response.user.name}`);
+                            // 自動填入當前用戶的 email 作為預設收件人
+                            $('#recipientEmail').val(response.user.email);
+                        }
+                    },
+                    error: function() {
+                        handleAuthError();
+                    }
+                });
+            }
+
+            function handleAuthError() {
+                localStorage.removeItem('jwtToken');
+                alert('登入狀態已過期，請重新登入');
+                window.location.href = './00-login.html';
+            }
+
+            function showResult(title, message) {
+                $('#resultModalLabel').text(title);
+                $('#resultModalBody').html(message);
+                resultModal.show();
+            }
+        });
+    </script>
+</body>
+
+</html>
